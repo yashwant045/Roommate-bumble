@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+/client/node_modules/
+/server/node_modules/
+
+# Next.js build output
+.next/
+out/
+/client/.next/
+
+# Compiled server targets
+dist/
+/server/dist/
+*.tsbuildinfo
+
+# Secrets & Environment variables
+.env
+.env.local
+.env.*.local
+
+# Local user upload files
+/server/uploads/*
+!/server/uploads/.gitkeep
+uploads/
+
+# Python caching (if any)
+__pycache__/
+*.pyc
+
+# OS Files
+.DS_Store
+Thumbs.db

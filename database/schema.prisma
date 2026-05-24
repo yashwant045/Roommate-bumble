@@ -1,0 +1,123 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id               String         @id @default(uuid())
+  email            String         @unique
+  password         String
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  profile          Profile?
+  preferences      Preferences?
+  listings         Listing[]
+  swipesSent       Swipe[]        @relation("SwipesSent")
+  swipesReceived   Swipe[]        @relation("SwipesReceived")
+  sentMessages     Message[]      @relation("SenderMessages")
+  receivedMessages Message[]      @relation("ReceiverMessages")
+  matchesAsUser1   Match[]        @relation("User1Matches")
+  matchesAsUser2   Match[]        @relation("User2Matches")
+  refreshTokens    RefreshToken[]
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Profile {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  gender       Int      // 0 = Male, 1 = Female
+  currentCity  String   // E.g., "mumbai", "bangalore"
+  hometown     String
+  course       String
+  workEx       Float    @default(0.0)
+  bio          String?
+  profileImage String?  @default("")
+  needRoommate Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Preferences {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rentBudget        Int      @default(500)
+  distFromUni       Float    @default(5.0)
+  maxPpr            Int      @default(2)
+  alcohol           Int      @default(0) // 0 = Flexible, 1 = Strictly No, 2 = Strictly Yes
+  smoking           Int      @default(0) // 0 = Flexible, 1 = Strictly No, 2 = Strictly Yes
+  foodPref          Int      @default(0) // 0 = Flexible, 1 = Strictly Veg, 2 = Strictly Non Veg
+  culSkills         Int      @default(0) // 0 = Sometimes, 1 = Expert, 2 = Never tried
+  bhk1              Int      @default(0) // 0 or 1
+  bhk2              Int      @default(0) // 0 or 1
+  bhk3              Int      @default(0) // 0 or 1
+  bhk4              Int      @default(0) // 0 or 1
+  hall              Int      @default(0) // 0 or 1
+  openToOtherBranch Int      @default(0) // 0 = Yes, 1 = No
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Swipe {
+  id        String   @id @default(uuid())
+  swiperId  String
+  swiper    User     @relation("SwipesSent", fields: [swiperId], references: [id], onDelete: Cascade)
+  swipeeId  String
+  swipee    User     @relation("SwipesReceived", fields: [swipeeId], references: [id], onDelete: Cascade)
+  liked     Boolean  // true = Like, false = Dislike
+  createdAt DateTime @default(now())
+
+  @@unique([swiperId, swipeeId])
+}
+
+model Match {
+  id        String    @id @default(uuid())
+  user1Id   String
+  user1     User      @relation("User1Matches", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2Id   String
+  user2     User      @relation("User2Matches", fields: [user2Id], references: [id], onDelete: Cascade)
+  messages  Message[]
+  createdAt DateTime  @default(now())
+
+  @@unique([user1Id, user2Id])
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  matchId    String
+  match      Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  senderId   String
+  sender     User     @relation("SenderMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId String
+  receiver   User     @relation("ReceiverMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  content    String
+  createdAt  DateTime @default(now())
+}
+
+model Listing {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String
+  rent        Int
+  address     String
+  images      String[]
+  amenities   String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

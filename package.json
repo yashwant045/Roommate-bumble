@@ -1,0 +1,34 @@
+{
+  "name": "roommate-bumble",
+  "version": "1.0.0",
+  "description": "Full-stack SaaS roommate recommendation platform",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install --prefix client && npm install --prefix server",
+    "dev:client": "npm run dev --prefix client",
+    "dev:server": "npm run dev --prefix server",
+    "db:migrate": "npm run db:migrate --prefix server",
+    "db:seed": "npm run db:seed --prefix server",
+    "db:studio": "npm run db:studio --prefix server",
+    "docker:up": "docker-compose -f docker/docker-compose.yml up --build",
+    "docker:down": "docker-compose -f docker/docker-compose.yml down",
+    "build:client": "npm run build --prefix client",
+    "build:server": "npm run build --prefix server"
+  },
+  "keywords": [
+    "roommate",
+    "recommendation",
+    "nextjs",
+    "express",
+    "fastapi",
+    "prisma"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "prisma": "^5.22.0"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0"
+  }
+}
