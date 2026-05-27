@@ -118,6 +118,7 @@ export default function HomePage() {
   const [candidatesLoading, setCandidatesLoading] = useState(false);
   const [swipeSubmitting, setSwipeSubmitting] = useState(false);
   const [lastMatch, setLastMatch] = useState<any | null>(null);
+  const [isRecalculating, setIsRecalculating] = useState(false);
 
   // Matches & Chat State
   const [matches, setMatches] = useState<any[]>([]);
@@ -381,8 +382,8 @@ export default function HomePage() {
     }
   };
 
-  const fetchRecommendations = async () => {
-    setCandidatesLoading(true);
+  const fetchRecommendations = async (silent = false) => {
+    if (!silent) setCandidatesLoading(true);
     try {
       const res = await api.get("/recommendations");
       if (res.data.success) {
@@ -392,9 +393,67 @@ export default function HomePage() {
     } catch (err) {
       console.error("Failed to load recommendations", err);
     } finally {
-      setCandidatesLoading(false);
+      if (!silent) setCandidatesLoading(false);
     }
   };
+
+  const handleSilentPreferenceUpdate = async () => {
+    if (!profile) return;
+    setIsRecalculating(true);
+    try {
+      const payload = {
+        name,
+        gender: Number(gender),
+        currentCity,
+        hometown,
+        course,
+        workEx: Number(workEx),
+        bio,
+        profileImage: profileImage || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name || "roommate")}`,
+        rentBudget: Number(rentBudget),
+        distFromUni: Number(distFromUni),
+        maxPpr: Number(maxPpr),
+        alcohol: Number(alcohol),
+        smoking: Number(smoking),
+        foodPref: Number(foodPref),
+        culSkills: Number(culSkills),
+        bhk1: Number(bhk1),
+        bhk2: Number(bhk2),
+        bhk3: Number(bhk3),
+        bhk4: Number(bhk4),
+        hall: Number(hall),
+        openToOtherBranch: Number(openToOtherBranch),
+      };
+
+      const res = await api.put("/profile/me", payload);
+      if (res.data.success) {
+        const { preferences, ...profileData } = res.data.data;
+        setProfile(profileData);
+        setPreferences(preferences);
+        await fetchRecommendations(true);
+      }
+    } catch (err) {
+      console.error("Silent preference update failed", err);
+    } finally {
+      setIsRecalculating(false);
+    }
+  };
+
+  // Debounced auto-save & refetch for "Tweak Your Vibe"
+  useEffect(() => {
+    if (!user || !profile || activeTab !== "swipe") return;
+
+    const timer = setTimeout(() => {
+      if (
+        preferences && 
+        (rentBudget !== preferences.rentBudget || distFromUni !== preferences.distFromUni)
+      ) {
+        handleSilentPreferenceUpdate();
+      }
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [rentBudget, distFromUni, activeTab, user, profile, preferences]);
 
   const recordSwipe = async (swipeeId: string, liked: boolean) => {
     if (swipeSubmitting) return;
@@ -1208,14 +1267,67 @@ export default function HomePage() {
         
         {/* TAB 1: BUMBLE SWIPER MODE */}
         {activeTab === "swipe" && (
-          <div className="flex flex-col items-center justify-center py-4 flex-1">
-            {candidatesLoading ? (
-              <div className="text-center py-12">
-                <Cpu className="w-10 h-10 text-primary-500 animate-spin mx-auto mb-4" />
-                <p className="text-sm font-semibold text-slate-400 uppercase tracking-widest animate-pulse">Running ML Distance Equations...</p>
+          <div className="flex flex-col lg:flex-row items-start justify-center gap-6 py-4 flex-1 w-full max-w-5xl mx-auto">
+            
+            {/* Tweak Your Vibe Control Panel */}
+            <div className="w-full lg:w-80 glass-panel rounded-3xl p-6 border border-slate-900 flex flex-col gap-6 shrink-0 mt-4 lg:mt-0">
+              <div className="border-b border-slate-900 pb-3">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-primary-500" /> Tweak Your Vibe
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">Real-time ML vector adjustments.</p>
               </div>
-            ) : candidates.length === 0 || swipeIndex >= candidates.length ? (
-              <div className="max-w-md w-full glass-panel rounded-3xl p-8 text-center border border-slate-900 flex flex-col items-center gap-4">
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase mb-2 flex justify-between">
+                  <span>Rent Budget</span>
+                  <span className="text-primary-400 font-bold">₹{rentBudget} / m</span>
+                </label>
+                <input 
+                  type="range" 
+                  min="1000" 
+                  max="100000" 
+                  step="500"
+                  value={rentBudget} 
+                  onChange={(e) => setRentBudget(Number(e.target.value))}
+                  className="w-full accent-primary-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase mb-2 flex justify-between">
+                  <span>Distance from Uni</span>
+                  <span className="text-primary-400 font-bold">{distFromUni} km</span>
+                </label>
+                <input 
+                  type="range" 
+                  min="0.5" 
+                  max="30" 
+                  step="0.5"
+                  value={distFromUni} 
+                  onChange={(e) => setDistFromUni(parseFloat(e.target.value))}
+                  className="w-full accent-primary-500"
+                />
+              </div>
+            </div>
+
+            {/* Main Interactive Card Stack Area */}
+            <div className="flex-1 flex flex-col items-center w-full relative">
+              {/* Recalculating Overlay Indicator */}
+              {isRecalculating && (
+                <div className="absolute top-4 right-4 z-50 bg-slate-900/80 backdrop-blur-sm border border-primary-500/30 text-primary-400 text-[10px] uppercase tracking-widest font-bold px-3 py-1.5 rounded-full flex items-center gap-2 shadow-lg shadow-primary-500/10">
+                  <Cpu className="w-3.5 h-3.5 animate-spin" />
+                  Recalculating ML Vectors...
+                </div>
+              )}
+
+              {candidatesLoading && !isRecalculating ? (
+                <div className="text-center py-12">
+                  <Cpu className="w-10 h-10 text-primary-500 animate-spin mx-auto mb-4" />
+                  <p className="text-sm font-semibold text-slate-400 uppercase tracking-widest animate-pulse">Running ML Distance Equations...</p>
+                </div>
+              ) : candidates.length === 0 || swipeIndex >= candidates.length ? (
+                <div className="max-w-md w-full glass-panel rounded-3xl p-8 text-center border border-slate-900 flex flex-col items-center gap-4 mt-4">
                 <div className="w-16 h-16 rounded-full bg-primary-500/10 text-primary-400 flex items-center justify-center border border-primary-500/20">
                   <Sparkles className="w-8 h-8 animate-pulse" />
                 </div>
@@ -1357,6 +1469,7 @@ export default function HomePage() {
                 })()}
               </div>
             )}
+            </div>
           </div>
         )}
 
