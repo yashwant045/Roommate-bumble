@@ -62,11 +62,7 @@ model Preferences {
   smoking           Int      @default(0) // 0 = Flexible, 1 = Strictly No, 2 = Strictly Yes
   foodPref          Int      @default(0) // 0 = Flexible, 1 = Strictly Veg, 2 = Strictly Non Veg
   culSkills         Int      @default(0) // 0 = Sometimes, 1 = Expert, 2 = Never tried
-  bhk1              Int      @default(0) // 0 or 1
-  bhk2              Int      @default(0) // 0 or 1
-  bhk3              Int      @default(0) // 0 or 1
-  bhk4              Int      @default(0) // 0 or 1
-  hall              Int      @default(0) // 0 or 1
+  housingTypes      String[]
   openToOtherBranch Int      @default(0) // 0 = Yes, 1 = No
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt

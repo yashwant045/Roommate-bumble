@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";
 import http from "http";
 import { Server } from "socket.io";
+import { createClient } from "redis";
+import { createAdapter } from "@socket.io/redis-adapter";
 import dotenv from "dotenv";
 import path from "path";
 import authRoutes from "./routes/authRoutes";
@@ -65,6 +67,16 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
     credentials: true,
   },
+});
+
+const pubClient = createClient({ url: process.env.REDIS_URL || "redis://localhost:6379" });
+const subClient = pubClient.duplicate();
+
+Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
+  io.adapter(createAdapter(pubClient, subClient));
+  console.log("Socket.IO Redis adapter connected.");
+}).catch((err) => {
+  console.error("Redis adapter connection failed:", err);
 });
 
 // Secure Socket.IO with JWT Token Validation

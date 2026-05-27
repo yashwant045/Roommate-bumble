@@ -42,11 +42,7 @@ class ProfileInput(BaseModel):
     smoking: int
     foodPref: int
     culSkills: int
-    bhk1: int
-    bhk2: int
-    bhk3: int
-    bhk4: int
-    hall: int
+    housingTypes: List[str]
     openToOtherBranch: int
 
 class RecommendationRequest(BaseModel):
@@ -92,15 +88,20 @@ def get_recommendations(req: RecommendationRequest):
         candidates_cont.append([c.workEx, c.distFromUni, c.rentBudget])
     candidates_cont = np.array(candidates_cont)
 
-    # Standardize continuous variables (StandardScaler expects stacked matrix)
+    # Standardize continuous variables using MinMaxScaler with fixed absolute bounds
     try:
-        to_std = np.vstack((target_cont, candidates_cont))
-        all_std = StandardScaler().fit_transform(to_std)
-        target_std = all_std[0, :].reshape(1, -1)
-        candidates_std = all_std[1:, :]
+        from sklearn.preprocessing import MinMaxScaler
+        scaler = MinMaxScaler()
+        # Fit on predefined bounds for: workEx (0-10), distFromUni (0-50), rentBudget (0-100000)
+        scaler.fit(np.array([[0, 0, 0], [10, 50, 100000]]))
+        
+        to_scale = np.vstack((target_cont, candidates_cont))
+        all_scaled = scaler.transform(to_scale)
+        target_scaled = all_scaled[0, :].reshape(1, -1)
+        candidates_scaled = all_scaled[1:, :]
         
         # Calculate continuous Euclidean distances
-        dist_cont = euclidean_distances(target_std, candidates_std).flatten()
+        dist_cont = euclidean_distances(target_scaled, candidates_scaled).flatten()
     except Exception as e:
         # Fallback if standardization errors out due to empty values or single inputs
         print(f"Continuous standardisation warning: {e}")
@@ -109,6 +110,9 @@ def get_recommendations(req: RecommendationRequest):
     # 2. Prepare categorical features
     # Determine all unique courses in target + candidates to perform dynamic one-hot encoding
     all_courses = list(set([target.course] + [c.course for c in candidates]))
+    
+    # Determine all unique housing types in target + candidates
+    all_housing_types = list(set(target.housingTypes + [h for c in candidates for h in c.housingTypes]))
     
     def get_categorical_vector(profile: ProfileInput) -> list:
         # Static categoricals: gender, currentCity, hometown, needRoommate, openToOtherBranch, maxPpr, habits
@@ -119,11 +123,6 @@ def get_recommendations(req: RecommendationRequest):
             1 if profile.needRoommate else 0,
             profile.openToOtherBranch,
             profile.maxPpr,
-            profile.bhk1,
-            profile.bhk2,
-            profile.bhk3,
-            profile.bhk4,
-            profile.hall,
             profile.alcohol,
             profile.smoking,
             profile.foodPref,
@@ -131,7 +130,9 @@ def get_recommendations(req: RecommendationRequest):
         ]
         # Course dynamic one-hot vector encoding
         course_vector = [1 if profile.course == course else 0 for course in all_courses]
-        return vector + course_vector
+        # Housing types dynamic multi-hot vector encoding
+        housing_vector = [1 if h in profile.housingTypes else 0 for h in all_housing_types]
+        return vector + course_vector + housing_vector
 
     target_cat = get_categorical_vector(target)
     

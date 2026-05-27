@@ -40,8 +40,12 @@ export class AuthService {
     // Save refresh token
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiration
+    
+    // Hash refresh token before storing
+    const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
+    
     await userRepository.createRefreshToken({
-      token: refreshToken,
+      token: hashedRefreshToken,
       userId: newUser.id,
       expiresAt,
     });
@@ -74,8 +78,12 @@ export class AuthService {
     // Save refresh token
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
+    
+    // Hash refresh token before storing
+    const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
+    
     await userRepository.createRefreshToken({
-      token: refreshToken,
+      token: hashedRefreshToken,
       userId: user.id,
       expiresAt,
     });
@@ -94,26 +102,36 @@ export class AuthService {
     }
 
     // Verify token structure
-    let decoded;
+    let decoded: any;
     try {
       decoded = verifyRefreshToken(token);
     } catch (err) {
       throw new UnauthorizedError("Invalid or expired refresh token");
     }
 
-    // Check DB status
-    const storedToken = await userRepository.findRefreshToken(token);
-    if (!storedToken || storedToken.expiresAt < new Date()) {
-      if (storedToken) {
-        await userRepository.deleteRefreshToken(token);
+    // Check against hashed tokens in DB
+    const storedTokens = await userRepository.findRefreshTokensByUserId(decoded.userId);
+    let validStoredToken = null;
+    
+    for (const st of storedTokens) {
+      const isMatch = await bcrypt.compare(token, st.token);
+      if (isMatch) {
+        validStoredToken = st;
+        break;
+      }
+    }
+
+    if (!validStoredToken || validStoredToken.expiresAt < new Date()) {
+      if (validStoredToken) {
+        await userRepository.deleteRefreshToken(validStoredToken.token);
       }
       throw new UnauthorizedError("Invalid or expired refresh token");
     }
 
     // Generate new access token
     const newAccessToken = generateAccessToken({
-      userId: storedToken.user.id,
-      email: storedToken.user.email,
+      userId: validStoredToken.user.id,
+      email: validStoredToken.user.email,
     });
 
     return {
@@ -125,6 +143,21 @@ export class AuthService {
     if (!token) {
       throw new BadRequestError("Refresh token required");
     }
-    await userRepository.deleteRefreshToken(token);
+    
+    let decoded: any;
+    try {
+      decoded = verifyRefreshToken(token);
+    } catch (err) {
+      return; // Token already invalid or tampered with
+    }
+
+    const storedTokens = await userRepository.findRefreshTokensByUserId(decoded.userId);
+    for (const st of storedTokens) {
+      if (await bcrypt.compare(token, st.token)) {
+        // Delete the explicitly matched hashed token
+        await userRepository.deleteRefreshToken(st.token);
+        break;
+      }
+    }
   }
 }

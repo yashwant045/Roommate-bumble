@@ -44,6 +44,13 @@ export class UserRepository {
     });
   }
 
+  async findRefreshTokensByUserId(userId: string): Promise<any[]> {
+    return prisma.refreshToken.findMany({
+      where: { userId },
+      include: { user: true },
+    });
+  }
+
   async deleteRefreshToken(token: string): Promise<void> {
     await prisma.refreshToken.deleteMany({
       where: { token },
