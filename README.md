@@ -7,9 +7,9 @@ A production-grade, highly scalable full-stack SaaS platform designed for studen
 ## 🛠️ Technology Stack
 
 - **Frontend:** Next.js 14 (App Router), TypeScript, Tailwind CSS, Zustand, React Query, Socket.IO Client.
-- **Backend:** Node.js, Express, TypeScript, JWT (Double token Access + Refresh), Prisma ORM, Socket.IO.
-- **ML Service:** FastAPI, NumPy, Pandas, SciPy, Scikit-learn (Euclidean + Hamming distance ranking).
-- **Database:** PostgreSQL.
+- **Backend:** Node.js, Express, TypeScript, JWT (Double token Access + Refresh), Prisma ORM, Socket.IO, Redis.
+- **ML Service:** FastAPI, NumPy, Pandas, SciPy, Scikit-learn (MinMaxScaler, Euclidean + Hamming distances).
+- **Database:** PostgreSQL, Redis (for horizontal Socket.IO scaling).
 - **Deployment:** Docker & Docker Compose.
 
 ---
@@ -35,6 +35,7 @@ roommate-bumble/
 - **Python:** v3.10+
 - **Docker & Docker Compose** (highly recommended for single-command start!)
 - **PostgreSQL** instance running locally or inside Docker.
+- **Redis** instance running locally or inside Docker (required for Socket.IO).
 
 ---
 
@@ -74,6 +75,7 @@ Ensure PostgreSQL is active and create a database named `roommate_bumble`.
    JWT_REFRESH_SECRET="super-secret-jwt-refresh-key-67890!"
    ML_SERVICE_URL="http://localhost:8000"
    CLIENT_URL="http://localhost:3000"
+   REDIS_URL="redis://localhost:6379"
    NODE_ENV=development
    ```
 3. Install dependencies:
@@ -135,14 +137,14 @@ Ensure PostgreSQL is active and create a database named `roommate_bumble`.
 ## 🔒 API Endpoints Index
 
 ### 🔑 Authentication Gateway (`/api/auth`)
-- `POST /register`: Accepts `{ email, password }` $\rightarrow$ Registers new User, returns Access & Refresh tokens.
-- `POST /login`: Accepts `{ email, password }` $\rightarrow$ Validates credentials, returns Access & Refresh tokens.
-- `POST /refresh`: Accepts `{ refreshToken }` $\rightarrow$ Returns a fresh Access token.
-- `POST /logout`: Accepts `{ refreshToken }` $\rightarrow$ Revokes active Refresh token.
+- `POST /register`: Accepts `{ email, password }` $\rightarrow$ Registers new User, returns Access & Refresh tokens (securely hashed in DB).
+- `POST /login`: Accepts `{ email, password }` $\rightarrow$ Validates credentials, returns Access & Refresh tokens (securely hashed in DB).
+- `POST /refresh`: Accepts `{ refreshToken }` $\rightarrow$ Validates hashed token and returns a fresh Access token.
+- `POST /logout`: Accepts `{ refreshToken }` $\rightarrow$ Revokes active Refresh token from the DB.
 
 ### 👤 Profile Vector (`/api/profile`) *(Protected)*
 - `GET /me`: Fetches detailed profile and preferences vector for the active user context.
 - `PUT /me`: Atomic upserts profile variables (`name`, `gender`, `course`, etc.) and preference bounds.
 
 ### 🧠 Recommendation Pipeline (`/api/recommendations`) *(Protected)*
-- `GET /`: Queries same-gender candidate list, standardizes budget/work values, dynamic one-hot encodes courses, calculates hybrid Euclidean-Hamming scores, and returns compatibility matches sorted descending.
+- `GET /`: Queries same-gender candidate list, standardizes budget/work values using `MinMaxScaler` with fixed bounds, dynamically encodes course and housing preferences, calculates hybrid Euclidean-Hamming scores, and returns compatibility matches sorted descending.
