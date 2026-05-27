@@ -26,11 +26,7 @@ const updateProfileSchema = z.object({
   smoking: z.number().int().min(0).max(2), // 0=Flex, 1=No, 2=Yes
   foodPref: z.number().int().min(0).max(2), // 0=Flex, 1=Veg, 2=Non-Veg
   culSkills: z.number().int().min(0).max(2), // 0=Sometimes, 1=Expert, 2=Never
-  bhk1: z.number().int().min(0).max(1),
-  bhk2: z.number().int().min(0).max(1),
-  bhk3: z.number().int().min(0).max(1),
-  bhk4: z.number().int().min(0).max(1),
-  hall: z.number().int().min(0).max(1),
+  housingTypes: z.array(z.string()).default([]),
   openToOtherBranch: z.number().int().min(0).max(1), // 0=Yes, 1=No
 });
 

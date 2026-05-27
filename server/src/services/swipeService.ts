@@ -46,4 +46,22 @@ export class SwipeService {
       };
     });
   }
+
+  async getPendingRequests(userId: string) {
+    const rawRequests = await swipeRepository.findPendingRequests(userId);
+    
+    // Format the response to include the swiper's details
+    return rawRequests.map((req: any) => {
+      return {
+        swipeId: req.id,
+        swipedAt: req.createdAt,
+        user: {
+          id: req.swiper.id,
+          email: req.swiper.email,
+          profile: req.swiper.profile,
+          preferences: req.swiper.preferences
+        }
+      };
+    });
+  }
 }

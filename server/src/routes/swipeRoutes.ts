@@ -7,5 +7,6 @@ const swipeController = new SwipeController();
 
 router.post("/", authMiddleware, swipeController.swipe);
 router.get("/matches", authMiddleware, swipeController.getMatches);
+router.get("/requests", authMiddleware, swipeController.getRequests);
 
 export default router;

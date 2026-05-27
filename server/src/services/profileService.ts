@@ -33,11 +33,7 @@ export class ProfileService {
       smoking: number;
       foodPref: number;
       culSkills: number;
-      bhk1: number;
-      bhk2: number;
-      bhk3: number;
-      bhk4: number;
-      hall: number;
+      housingTypes: string[];
       openToOtherBranch: number;
     }
   ) {
@@ -63,11 +59,7 @@ export class ProfileService {
       smoking: data.smoking,
       foodPref: data.foodPref,
       culSkills: data.culSkills,
-      bhk1: data.bhk1,
-      bhk2: data.bhk2,
-      bhk3: data.bhk3,
-      bhk4: data.bhk4,
-      hall: data.hall,
+      housingTypes: data.housingTypes,
       openToOtherBranch: data.openToOtherBranch,
     });
 

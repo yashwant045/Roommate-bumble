@@ -14,11 +14,20 @@ export class RecommendationService {
       throw new NotFoundError("Please complete your profile and preferences first");
     }
 
-    // 2. Fetch candidate profiles of the SAME GENDER and exclude the target user
+    // 2. Fetch candidate profiles of the SAME GENDER, exclude the target user, and exclude those already swiped/matched
+    const existingSwipes = await prisma.swipe.findMany({
+      where: { swiperId: userId },
+      select: { swipeeId: true }
+    });
+    const excludedUserIds = existingSwipes.map(s => s.swipeeId);
+
     const candidates = await prisma.profile.findMany({
       where: {
         gender: targetProfile.gender,
-        userId: { not: userId },
+        userId: { 
+          not: userId,
+          notIn: excludedUserIds
+        },
         needRoommate: true,
       },
       include: {
@@ -52,11 +61,7 @@ export class RecommendationService {
       smoking: p.user.preferences?.smoking ?? 0,
       foodPref: p.user.preferences?.foodPref ?? 0,
       culSkills: p.user.preferences?.culSkills ?? 0,
-      bhk1: p.user.preferences?.bhk1 ?? 0,
-      bhk2: p.user.preferences?.bhk2 ?? 0,
-      bhk3: p.user.preferences?.bhk3 ?? 0,
-      bhk4: p.user.preferences?.bhk4 ?? 0,
-      hall: p.user.preferences?.hall ?? 0,
+      housingTypes: p.user.preferences?.housingTypes ?? [],
       openToOtherBranch: p.user.preferences?.openToOtherBranch ?? 0,
     });
 

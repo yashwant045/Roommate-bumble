@@ -68,7 +68,7 @@ export default function HomePage() {
   } = useAuthStore();
 
   // Navigation & General Tabs
-  const [activeTab, setActiveTab] = useState<"swipe" | "chat" | "listings" | "profile">("swipe");
+  const [activeTab, setActiveTab] = useState<"swipe" | "chat" | "listings" | "profile" | "requests">("swipe");
   const [isStoreLoaded, setIsStoreLoaded] = useState(false);
 
   // Authentication State
@@ -123,6 +123,8 @@ export default function HomePage() {
   // Matches & Chat State
   const [matches, setMatches] = useState<any[]>([]);
   const [matchesLoading, setMatchesLoading] = useState(false);
+  const [requests, setRequests] = useState<any[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<any | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
@@ -175,6 +177,8 @@ export default function HomePage() {
       fetchMatches();
     } else if (activeTab === "listings") {
       fetchListings();
+    } else if (activeTab === "requests") {
+      fetchRequests();
     }
   }, [activeTab, user, profile]);
 
@@ -491,6 +495,20 @@ export default function HomePage() {
       console.error("Failed to fetch matches", err);
     } finally {
       setMatchesLoading(false);
+    }
+  };
+
+  const fetchRequests = async () => {
+    setRequestsLoading(true);
+    try {
+      const res = await api.get("/swipes/requests");
+      if (res.data.success) {
+        setRequests(res.data.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch requests", err);
+    } finally {
+      setRequestsLoading(false);
     }
   };
 
@@ -1238,6 +1256,13 @@ export default function HomePage() {
             <span className="hidden md:inline">Flats</span>
           </button>
           <button 
+            onClick={() => setActiveTab("requests")}
+            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all duration-200 ${activeTab === "requests" ? "bg-primary-500 text-slate-950" : "text-slate-400 hover:text-slate-200"}`}
+          >
+            <UserCheck className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Requests</span>
+          </button>
+          <button 
             onClick={() => setActiveTab("profile")}
             className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all duration-200 ${activeTab === "profile" ? "bg-primary-500 text-slate-950" : "text-slate-400 hover:text-slate-200"}`}
           >
@@ -1702,7 +1727,86 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* TAB 4: MY PROFILE / SETTINGS */}
+        {/* TAB 4: INCOMING REQUESTS */}
+        {activeTab === "requests" && (
+          <div className="flex flex-col gap-6 py-4 flex-1 w-full max-w-7xl mx-auto">
+            <div className="glass-panel rounded-3xl p-8 border border-slate-900">
+              <div className="border-b border-slate-900 pb-4 mb-6">
+                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                  <UserCheck className="w-6 h-6 text-primary-500" /> Pending Requests
+                </h3>
+                <p className="text-sm text-slate-400 mt-1">Users who swiped right on your profile. Approve them to start chatting!</p>
+              </div>
+
+              {requestsLoading ? (
+                <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-4">
+                  <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-sm font-semibold animate-pulse">Loading vectors...</p>
+                </div>
+              ) : requests.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
+                  <div className="w-16 h-16 rounded-full bg-slate-900/50 flex items-center justify-center mb-2">
+                    <UserCheck className="w-8 h-8 text-slate-600" />
+                  </div>
+                  <p className="text-base font-semibold">No pending roommate requests right now.</p>
+                  <p className="text-sm">Keep swiping to discover matches!</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {requests.map((req) => (
+                    <div key={req.swipeId} className="glass-panel rounded-3xl p-6 border border-slate-850 flex flex-col gap-4 relative overflow-hidden group">
+                      <div className="flex items-start gap-4">
+                        <img 
+                          src={req.user.profile?.profileImage || `https://api.dicebear.com/7.x/adventurer/svg?seed=${req.user.profile?.name}`} 
+                          alt="Avatar" 
+                          className="w-16 h-16 rounded-2xl object-cover bg-slate-900"
+                        />
+                        <div className="flex flex-col">
+                          <h4 className="text-lg font-bold text-white">{req.user.profile?.name || "Anonymous"}</h4>
+                          <span className="text-xs text-primary-400 font-semibold">{req.user.profile?.course || "Student"}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col gap-2 mt-2">
+                        <div className="flex items-center justify-between text-xs border-b border-slate-800/50 pb-2">
+                          <span className="text-slate-400">Rent Budget</span>
+                          <span className="text-white font-bold">₹{req.user.preferences?.rentBudget || "N/A"}/mo</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs pb-1">
+                          <span className="text-slate-400">Campus Distance</span>
+                          <span className="text-white font-bold">{req.user.preferences?.distFromUni || "N/A"} km</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 mt-auto pt-4 border-t border-slate-800">
+                        <button 
+                          onClick={() => {
+                            recordSwipe(req.user.id, false);
+                            setRequests(prev => prev.filter(r => r.swipeId !== req.swipeId));
+                          }}
+                          className="flex-1 py-2.5 rounded-xl bg-slate-900 hover:bg-red-950/40 text-slate-300 hover:text-red-400 border border-slate-800 hover:border-red-900/50 text-xs font-bold transition-colors"
+                        >
+                          Decline
+                        </button>
+                        <button 
+                          onClick={() => {
+                            recordSwipe(req.user.id, true);
+                            setRequests(prev => prev.filter(r => r.swipeId !== req.swipeId));
+                          }}
+                          className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-primary-500 to-amber-500 text-slate-950 font-bold text-xs shadow-md shadow-primary-500/20 active:scale-95 transition-all"
+                        >
+                          Approve
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 5: MY PROFILE / SETTINGS */}
         {activeTab === "profile" && (
           <div className="max-w-2xl mx-auto w-full glass-panel rounded-3xl p-8 border border-slate-900">
             <div className="border-b border-slate-900 pb-4 mb-6 flex justify-between items-center">

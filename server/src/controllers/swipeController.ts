@@ -58,4 +58,22 @@ export class SwipeController {
       next(error);
     }
   }
+
+  async getRequests(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        throw new BadRequestError("User context missing");
+      }
+
+      const requests = await swipeService.getPendingRequests(userId);
+
+      return res.status(200).json({
+        success: true,
+        data: requests,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

@@ -71,11 +71,7 @@ export class ProfileRepository {
       smoking: number;
       foodPref: number;
       culSkills: number;
-      bhk1: number;
-      bhk2: number;
-      bhk3: number;
-      bhk4: number;
-      hall: number;
+      housingTypes: string[];
       openToOtherBranch: number;
     }
   ): Promise<Preferences> {

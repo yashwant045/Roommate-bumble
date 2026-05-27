@@ -80,4 +80,32 @@ export class SwipeRepository {
       where: { id: matchId },
     });
   }
+
+  async findPendingRequests(userId: string) {
+    // 1. Get all matches for this user to know who to exclude
+    const matches = await this.findMatches(userId);
+    const matchedUserIds = matches.map(m => m.user1Id === userId ? m.user2Id : m.user1Id);
+
+    // 2. Query incoming swipes where the swiper is NOT in the matched users list
+    return prisma.swipe.findMany({
+      where: {
+        swipeeId: userId,
+        liked: true,
+        swiperId: {
+          notIn: matchedUserIds
+        }
+      },
+      include: {
+        swiper: {
+          include: {
+            profile: true,
+            preferences: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+  }
 }
